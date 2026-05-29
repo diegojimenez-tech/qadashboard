@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#060a14;color:#cdd5f0;min-height:100vh}
+:root{
+  --bg:#060a14;--s1:#0d1220;--s2:#111827;--s3:#1a2235;
+  --border:#1e2d45;--border2:#263548;
+  --text:#cdd5f0;--muted:#5a6a8a;--accent:#3b82f6;
+  --green:#22d3a5;--red:#f43f5e;--amber:#f59e0b;--purple:#818cf8;--teal:#2dd4bf;--pink:#e879f9;--sky:#38bdf8;
+}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+/* sidebar */
+.sidebar{background:var(--s1);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.logo-area{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.logo-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:7px 12px;margin-bottom:10px}
+.logo-badge i{font-size:16px;color:var(--accent)}
+.logo-badge span{font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1px;text-transform:uppercase}
+.logo-area h1{font-size:13px;font-weight:500;color:var(--text)}
+.logo-area p{font-size:11px;color:var(--muted);margin-top:2px}
+.nav-section{padding:14px 0 4px;border-bottom:1px solid var(--border)}
+.nav-lbl{font-size:9px;font-weight:600;letter-spacing:1.8px;color:var(--muted);padding:0 18px 6px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 18px;cursor:pointer;font-size:12px;color:var(--muted);transition:all .12s;border-left:2px solid transparent}
+.nav-item:hover,.nav-item.active{color:var(--text);background:rgba(59,130,246,.06);border-left-color:var(--accent)}
+.nav-item i{font-size:15px}
+.sidebar-footer{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border)}
+.sidebar-footer .lbl{font-size:10px;color:var(--muted)}
+.sidebar-footer .val{font-size:13px;font-weight:500;color:var(--text);margin-top:2px;font-family:'JetBrains Mono',monospace}
+/* main */
+.main{overflow-y:auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:20}
+.topbar h2{font-size:15px;font-weight:500;color:var(--text)}
+.topbar-right{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-family:'Inter',sans-serif}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#2563eb;border-color:#2563eb;color:#fff}
+.btn i{font-size:14px}
+.content{padding:24px 28px}
+/* filters */
+.filter-bar{display:flex;align-items:flex-end;gap:12px;margin-bottom:24px;flex-wrap:wrap;padding:16px 20px;background:var(--s1);border:1px solid var(--border);border-radius:10px}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-lbl{font-size:10px;color:var(--muted);font-weight:500;letter-spacing:.6px;text-transform:uppercase}
+select,input[type=text]{background:var(--s2);border:1px solid var(--border2);color:var(--text);padding:7px 10px;border-radius:7px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;transition:border .12s;min-width:120px}
+select:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
+/* import */
+.import-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+.import-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.import-title i{color:var(--accent);font-size:16px}
+.sheet-row{display:flex;gap:8px;margin-bottom:8px}
+.sheet-row input{flex:1}
+.hint{font-size:11px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:5px}
+.divider-or{text-align:center;color:var(--muted);font-size:11px;margin:14px 0;position:relative}
+.divider-or::before,.divider-or::after{content:'';position:absolute;top:50%;width:44%;height:1px;background:var(--border)}
+.divider-or::before{left:0}.divider-or::after{right:0}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .18s}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(59,130,246,.04)}
+.drop-zone i{font-size:36px;color:var(--muted);margin-bottom:10px;display:block}
+.drop-zone h3{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px}
+.drop-zone p{font-size:12px;color:var(--muted);line-height:1.5}
+.file-input{display:none}
+.data-status{font-size:12px;color:var(--accent);margin-top:10px;min-height:18px}
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px 16px 14px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px 2px 0 0}
+.kpi.blue::after{background:var(--accent)}
+.kpi.green::after{background:var(--green)}
+.kpi.red::after{background:var(--red)}
+.kpi.amber::after{background:var(--amber)}
+.kpi.purple::after{background:var(--purple)}
+.kpi.pink::after{background:var(--pink)}
+.kpi.sky::after{background:var(--sky)}
+.kpi.teal::after{background:var(--teal)}
+.kpi-lbl{font-size:10px;font-weight:500;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.kpi-val{font-size:26px;font-weight:300;color:var(--text);font-family:'JetBrains Mono',monospace;line-height:1}
+.kpi-val span{font-size:13px;font-weight:400;margin-left:2px;color:var(--muted)}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-icon{position:absolute;right:12px;top:12px;font-size:20px;opacity:.2}
+/* charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.charts-row.three{grid-template-columns:1fr 1fr 1fr}
+.charts-row.full{grid-template-columns:1fr}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:600;color:var(--text);letter-spacing:.2px}
+.card-badge{font-size:10px;background:rgba(59,130,246,.12);color:var(--accent);padding:3px 8px;border-radius:12px;font-weight:500}
+.chart-wrap{position:relative;width:100%}
+/* coord cards */
+.coord-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:20px}
+.coord-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s}
+.coord-card:hover{border-color:var(--border2)}
+.coord-hdr{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none}
+.coord-hdr:hover{background:rgba(255,255,255,.02)}
+.coord-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.coord-info{flex:1;min-width:0}
+.coord-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coord-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.coord-pills{display:flex;gap:5px;flex-shrink:0}
+.cpill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.cpill.err{background:rgba(244,63,94,.12);color:var(--red)}
+.cpill.fin{background:rgba(245,158,11,.12);color:var(--amber)}
+.cpill.ok{background:rgba(34,211,165,.12);color:var(--green)}
+.chevron{font-size:13px;color:var(--muted);transition:transform .18s;flex-shrink:0}
+.coord-card.open .chevron{transform:rotate(180deg)}
+.coord-body{display:none;border-top:1px solid var(--border)}
+.coord-card.open .coord-body{display:block}
+.coord-stats{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--border)}
+.cstat{padding:10px 12px;text-align:center}
+.cstat-val{font-size:15px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.cstat-lbl{font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+/* error table */
+.err-table{width:100%;border-collapse:collapse;font-size:11px}
+.err-table th{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;text-align:left}
+.err-table td{padding:8px 12px;border-bottom:1px solid rgba(30,45,69,.5);vertical-align:top}
+.err-table tr:last-child td{border-bottom:none}
+.err-table tr:hover td{background:rgba(255,255,255,.015)}
+/* badges */
+.lob-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500}
+.qa-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500}
+.qa-1{background:rgba(34,211,165,.12);color:var(--green)}
+.qa-2{background:rgba(245,158,11,.12);color:var(--amber)}
+.qa-3{background:rgba(244,63,94,.12);color:var(--red)}
+.fin-yes{background:rgba(244,63,94,.12);color:var(--red);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;display:inline-flex;align-items:center;gap:3px}
+.fin-no{background:rgba(30,45,69,.5);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:10px}
+/* progress */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prog-lbl{font-size:11px;color:var(--muted);min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-bar{flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.prog-val{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text);min-width:38px;text-align:right}
+.prog-count{font-size:10px;color:var(--muted);min-width:28px;text-align:right}
+/* audit log table */
+.audit-table{width:100%;border-collapse:collapse;font-size:11px}
+.audit-table th{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;text-align:left;white-space:nowrap}
+.audit-table td{padding:8px 12px;border-bottom:1px solid rgba(30,45,69,.4);vertical-align:middle;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audit-table tr:hover td{background:rgba(59,130,246,.03)}
+.audit-table tr:last-child td{border-bottom:none}
+/* lob colors */
+.lob-NP{background:rgba(59,130,246,.12);color:var(--accent)}
+.lob-NC{background:rgba(129,140,248,.12);color:var(--purple)}
+.lob-NL{background:rgba(45,212,191,.12);color:var(--teal)}
+.lob-RC{background:rgba(232,121,249,.12);color:var(--pink)}
+.lob-RL{background:rgba(245,158,11,.12);color:var(--amber)}
+.lob-LP{background:rgba(34,211,165,.12);color:var(--green)}
+.lob-TC{background:rgba(56,189,248,.12);color:var(--sky)}
+.lob-TL{background:rgba(244,63,94,.12);color:var(--red)}
+/* empty */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty i{font-size:32px;display:block;margin-bottom:10px;opacity:.35}
+/* scrollable */
+.scroll-x{overflow-x:auto}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:none}.charts-row{grid-template-columns:1fr}.charts-row.three{grid-template-columns:1fr}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo-badge"><i class="ti ti-shield-check"></i><span>QA</span></div>
+      <h1>Quality Analytics</h1>
+      <p>Audit Intelligence</p>
+    </div>
+    <div class="nav-section">
+      <div class="nav-lbl">Dashboard</div>
+      <div class="nav-item active"><i class="ti ti-layout-dashboard"></i>Overview</div>
+      <div class="nav-item"><i class="ti ti-users"></i>Coordinators</div>
+      <div class="nav-item"><i class="ti ti-layers-difference"></i>By LOB</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-lbl">Analysis</div>
+      <div class="nav-item"><i class="ti ti-alert-triangle"></i>Errors</div>
+      <div class="nav-item"><i class="ti ti-currency-dollar"></i>Financial Impact</div>
+      <div class="nav-item"><i class="ti ti-list-details"></i>Audit Log</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="lbl">Records loaded</div>
+      <div class="val" id="recCount">—</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="pageTitle">QA Dashboard</h2>
+      <div class="topbar-right">
+        <button class="btn" onclick="document.getElementById('csvFile').click()"><i class="ti ti-upload"></i>Upload CSV</button>
+        <button class="btn btn-primary" onclick="loadSheet()"><i class="ti ti-brand-google"></i>Google Sheet</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- IMPORT -->
+      <div id="importSection" class="import-card">
+        <div class="import-title"><i class="ti ti-database-import"></i>Connect your data source</div>
+        <div class="sheet-row">
+          <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+          <button class="btn btn-primary" onclick="loadSheet()"><i class="ti ti-refresh"></i>Load</button>
+        </div>
+        <div class="hint"><i class="ti ti-info-circle" style="font-size:12px"></i>File → Share → Publish to web → CSV → Copy link</div>
+        <div class="divider-or">or upload a CSV file</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()">
+          <i class="ti ti-file-spreadsheet"></i>
+          <h3>Drop your QA CSV here</h3>
+          <p>Export Google Form responses as CSV or use Google Sheets export.<br>The column headers must match the QA form fields.</p>
+          <input type="file" id="csvFile" class="file-input" accept=".csv" onchange="handleFile(this.files[0])">
+        </div>
+        <div class="data-status" id="dataStatus"></div>
+      </div>
+
+      <!-- FILTERS -->
+      <div class="filter-bar" id="filterBar" style="display:none">
+        <div class="filter-group">
+          <div class="filter-lbl">LOB</div>
+          <select id="fLob" onchange="render()"><option value="">All LOBs</option></select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-lbl">QA Level</div>
+          <select id="fLevel" onchange="render()">
+            <option value="">All levels</option>
+            <option value="1">Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-lbl">Financial Impact</div>
+          <select id="fFin" onchange="render()">
+            <option value="">All</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-lbl">Coordinator</div>
+          <select id="fCoord" onchange="render()"><option value="">All coordinators</option></select>
+        </div>
+        <div class="filter-group">
+          <div class="filter-lbl">Month</div>
+          <select id="fMonth" onchange="render()">
+            <option value="">All months</option>
+            <option value="0">January</option><option value="1">February</option>
+            <option value="2">March</option><option value="3">April</option>
+            <option value="4">May</option><option value="5">June</option>
+            <option value="6">July</option><option value="7">August</option>
+            <option value="8">September</option><option value="9">October</option>
+            <option value="10">November</option><option value="11">December</option>
+          </select>
+        </div>
+        <div class="filter-group" style="margin-left:auto">
+          <div class="filter-lbl">Search</div>
+          <input type="text" id="fSearch" placeholder="Coord / Order / Error..." oninput="render()">
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div id="dashboard" style="display:none">
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi blue">
+            <div class="kpi-lbl">Total Audits</div>
+            <div class="kpi-val" id="kTotal">0</div>
+            <div class="kpi-sub" id="kPeriod">—</div>
+            <i class="ti ti-shield-check kpi-icon"></i>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-lbl">With Errors</div>
+            <div class="kpi-val" id="kErrors">0<span>%</span></div>
+            <div class="kpi-sub" id="kErrorsN">— audits with errors</div>
+            <i class="ti ti-alert-triangle kpi-icon"></i>
+          </div>
+          <div class="kpi amber">
+            <div class="kpi-lbl">Financial Impact</div>
+            <div class="kpi-val" id="kFin">0<span>%</span></div>
+            <div class="kpi-sub" id="kFinN">— impacted audits</div>
+            <i class="ti ti-currency-dollar kpi-icon"></i>
+          </div>
+          <div class="kpi purple">
+            <div class="kpi-lbl">Level 3 Errors</div>
+            <div class="kpi-val" id="kL3">0</div>
+            <div class="kpi-sub">critical QA level</div>
+            <i class="ti ti-alert-octagon kpi-icon"></i>
+          </div>
+          <div class="kpi green">
+            <div class="kpi-lbl">Error-Free</div>
+            <div class="kpi-val" id="kClean">0<span>%</span></div>
+            <div class="kpi-sub" id="kCleanN">— clean audits</div>
+            <i class="ti ti-circle-check kpi-icon"></i>
+          </div>
+          <div class="kpi sky">
+            <div class="kpi-lbl">LOBs Audited</div>
+            <div class="kpi-val" id="kLobs">0</div>
+            <div class="kpi-sub">lines of business</div>
+            <i class="ti ti-layers-difference kpi-icon"></i>
+          </div>
+          <div class="kpi teal">
+            <div class="kpi-lbl">Coordinators</div>
+            <div class="kpi-val" id="kCoords">0</div>
+            <div class="kpi-sub">unique audited</div>
+            <i class="ti ti-users kpi-icon"></i>
+          </div>
+          <div class="kpi pink">
+            <div class="kpi-lbl">Checklist Pass</div>
+            <div class="kpi-val" id="kChecklist">0<span>%</span></div>
+            <div class="kpi-sub">fully reviewed</div>
+            <i class="ti ti-clipboard-check kpi-icon"></i>
+          </div>
+        </div>
+
+        <!-- Charts row 1 -->
+        <div class="charts-row">
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Error rate by LOB</span><span class="card-badge" id="bLob">—</span></div>
+            <div class="chart-wrap" style="height:220px"><canvas id="cLob" role="img" aria-label="Error rate by line of business"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">QA Level distribution</span><span class="card-badge" id="bLevel">—</span></div>
+            <div class="chart-wrap" style="height:220px"><canvas id="cLevel" role="img" aria-label="QA level distribution"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Charts row 2 -->
+        <div class="charts-row">
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Audits over time</span><span class="card-badge" id="bTime">Monthly</span></div>
+            <div class="chart-wrap" style="height:200px"><canvas id="cTime" role="img" aria-label="Audits over time trend"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Financial impact by month</span><span class="card-badge">$ Risk</span></div>
+            <div class="chart-wrap" style="height:200px"><canvas id="cFin" role="img" aria-label="Financial impact over time"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Charts row 3 -->
+        <div class="charts-row">
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Top error types</span><span class="card-badge" id="bErrType">—</span></div>
+            <div class="chart-wrap" id="errTypeWrap" style="height:240px"><canvas id="cErrType" role="img" aria-label="Top error types horizontal bar"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Errors per coordinator</span><span class="card-badge" id="bCoordErr">—</span></div>
+            <div class="chart-wrap" id="coordErrWrap" style="height:240px"><canvas id="cCoordErr" role="img" aria-label="Errors per coordinator"></canvas></div>
+          </div>
+        </div>
+
+        <!-- LOB breakdown -->
+        <div class="charts-row">
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">LOB audit volume & error rate</span></div>
+            <div id="lobBreakdown" style="padding:2px 0"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><span class="card-title">Error description cloud</span><span class="card-badge" id="bDesc">—</span></div>
+            <div id="errorCloud" style="line-height:2;padding:4px 0"></div>
+          </div>
+        </div>
+
+        <!-- Coordinator detail section -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hdr">
+            <span class="card-title"><i class="ti ti-user-search" style="font-size:14px;vertical-align:-2px;margin-right:6px;color:var(--accent)"></i>Error detail per coordinator</span>
+            <span class="card-badge" id="bCoordDetail">—</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <button class="btn" style="font-size:11px;padding:4px 10px" onclick="cSort='errors';renderCoords(lastData)">Sort by errors</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px" onclick="cSort='fin';renderCoords(lastData)">Sort by fin. impact</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px" onclick="cSort='name';renderCoords(lastData)">Sort by name</button>
+            <button class="btn" style="font-size:11px;padding:4px 10px;margin-left:auto" onclick="toggleAllCoords()" id="btnExpandAll"><i class="ti ti-chevrons-down" style="font-size:12px"></i>Expand all</button>
+          </div>
+          <div id="coordGrid" class="coord-grid"></div>
+        </div>
+
+        <!-- Audit log -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-hdr">
+            <span class="card-title"><i class="ti ti-list-details" style="font-size:14px;vertical-align:-2px;margin-right:6px;color:var(--accent)"></i>Audit log</span>
+            <span class="card-badge" id="bLog">—</span>
+          </div>
+          <div class="scroll-x">
+            <table class="audit-table">
+              <thead><tr>
+                <th>Date</th><th>Coordinator</th><th>LOB</th><th>Task</th><th>Order #</th>
+                <th>QA Level</th><th>Error type</th><th>Fin. Impact</th><th>Error found</th>
+              </tr></thead>
+              <tbody id="auditLog"><tr><td colspan="9" class="empty"><i class="ti ti-database"></i><p>No data loaded</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /dashboard -->
+
+      <!-- NO DATA -->
+      <div id="noData" style="text-align:center;padding:70px 20px;color:var(--muted)">
+        <i class="ti ti-shield-search" style="font-size:52px;display:block;margin-bottom:18px;opacity:.25"></i>
+        <p style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:8px">Upload your QA audit data to begin</p>
+        <p style="font-size:13px">Paste your Google Form response sheet URL or upload a CSV export.</p>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let rawData = [];
+let charts = {};
+let cSort = 'errors';
+let lastData = [];
+let allExpanded = false;
+
+const AV_COLORS = ['#3b82f6','#22d3a5','#f59e0b','#818cf8','#f43f5e','#2dd4bf','#e879f9','#38bdf8','#a3e635','#fb923c'];
+
+const LOB_MAP = {
+  'Network Prog': {key:'NP', fields:['Network Prog - Coordinator Name','Network Prog - Network','Network Prog - Task']},
+  'Network Copy': {key:'NC', fields:['Network Copy - Coordinator Name','Network Copy - Task']},
+  'Network Logs': {key:'NL', fields:['Network Logs - Coordinator Name','Network Logs - Network','Network Logs - Tasks']},
+  'Radio Copy':   {key:'RC', fields:['Radio Copy - Coordinator Name','Radio Copy - Market','Radio Copy - Task']},
+  'Radio Logs':   {key:'RL', fields:['Radio Logs - Coordinator Name','Radio Logs - Market','Radio Logs - Task']},
+  'Local Prog':   {key:'LP', fields:['Local Prog - Coordinator Name','Local Prog - Task','Local Prog - Network']},
+  'TV Copy':      {key:'TC', fields:['TV Copy - Coordinator Name','TV Copy - Market','TV Copy - Tasks']},
+  'TV Logs':      {key:'TL', fields:['TV Logs - Coordinator Name','TV Logs - Task','TV Logs - Market']},
+};
+
+const LOB_COORD_FIELD = {
+  'NP': 'Network Prog - Coordinator Name',
+  'NC': 'Network Copy - Coordinator Name',
+  'NL': 'Network Logs - Coordinator Name',
+  'RC': 'Radio Copy - Coordinator Name',
+  'RL': 'Radio Logs - Coordinator Name',
+  'LP': 'Local Prog - Coordinator Name',
+  'TC': 'TV Copy - Coordinator Name',
+  'TL': 'TV Logs - Coordinator Name',
+};
+const LOB_TASK_FIELD = {
+  'NP': 'Network Prog - Task',
+  'NC': 'Network Copy - Task',
+  'NL': 'Network Logs - Tasks',
+  'RC': 'Radio Copy - Task',
+  'RL': 'Radio Logs - Task',
+  'LP': 'Local Prog - Task',
+  'TC': 'TV Copy - Tasks',
+  'TL': 'TV Logs - Task',
+};
+
+function detectLOB(row) {
+  const selected = (row['Select your LOB'] || '').trim();
+  for (const [lobName, info] of Object.entries(LOB_MAP)) {
+    if (selected.toLowerCase().includes(lobName.toLowerCase())) return info.key;
+  }
+  for (const [lobName, info] of Object.entries(LOB_MAP)) {
+    for (const field of info.fields) {
+      if (row[field] && row[field].trim()) return info.key;
+    }
+  }
+  return 'Unknown';
+}
+
+function getCoordinator(row, lobKey) {
+  const field = LOB_COORD_FIELD[lobKey];
+  if (field && row[field] && row[field].trim()) return row[field].trim();
+  for (const f of Object.values(LOB_COORD_FIELD)) {
+    if (row[f] && row[f].trim()) return row[f].trim();
+  }
+  return row['Email Address'] || 'Unknown';
+}
+
+function getTask(row, lobKey) {
+  const f = LOB_TASK_FIELD[lobKey];
+  return (f && row[f]) ? row[f].trim() : '—';
+}
+
+function parseBool(val) {
+  if (!val) return false;
+  const v = val.toString().toLowerCase().trim();
+  return v === 'yes' || v === 'true' || v === '1' || v === 'si' || v === 'sí';
+}
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(file) {
+  if (!file) return;
+  Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processData(r.data) });
+}
+
+function loadSheet() {
+  let url = document.getElementById('sheetUrl').value.trim();
+  if (!url) { alert('Paste the published CSV URL.'); return; }
+  if (!url.includes('output=csv')) {
+    if (url.includes('/edit')) url = url.replace('/edit', '/pub') + '?output=csv';
+    else url += (url.includes('?') ? '&' : '?') + 'output=csv';
+  }
+  const st = document.getElementById('dataStatus');
+  st.textContent = 'Loading...';
+  fetch(url)
+    .then(r => { if (!r.ok) throw new Error('Network error'); return r.text(); })
+    .then(t => Papa.parse(t, { header: true, skipEmptyLines: true, complete: r => processData(r.data) }))
+    .catch(e => { st.textContent = 'Error: ' + e.message; });
+}
+
+function processData(data) {
+  if (!data || !data.length) { document.getElementById('dataStatus').textContent = 'No data found.'; return; }
+
+  rawData = data.map(row => {
+    const lobKey = detectLOB(row);
+    const coord = getCoordinator(row, lobKey);
+    const task = getTask(row, lobKey);
+    const ts = row['Timestamp'] || row['timestamp'] || '';
+    let dt = null;
+    try { dt = ts ? new Date(ts) : null; } catch(e) {}
+    const qaLevel = parseInt(row['QA Level'] || row['qa level'] || '0') || 0;
+    const errType = (row['Type of error'] || '').trim();
+    const finImpact = parseBool(row['Financial Impact']);
+    const errDesc = (row['Please indicate the error found'] || '').trim();
+    const checklist = parseBool(row['All applicable QA checklist items and standards were fully reviewed before and during this audit.']);
+    const orderNum = (row['Enter Order #, Estimate #, Task ID or House Number'] || '').trim();
+    const futureDate = (row['In case of auditing a future task please add the date'] || '').trim();
+    const NONE_VAL = /^(none|n\/a|na|no|no error|sin error|ninguno|ninguna|-|\u2014|\.)$/i;
+    const errTypeClean = NONE_VAL.test(errType) ? '' : errType;
+    const errDescClean = NONE_VAL.test(errDesc) ? '' : errDesc;
+    const hasError = !!(errTypeClean || errDescClean);
+    return { row, lobKey, coord, task, ts, dt, qaLevel, errType: errTypeClean, finImpact, errDesc: errDescClean, checklist, orderNum, futureDate, hasError };
+  });
+
+  document.getElementById('dataStatus').textContent = '';
+  document.getElementById('recCount').textContent = rawData.length.toLocaleString();
+  populateFilters();
+  document.getElementById('filterBar').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('noData').style.display = 'none';
+  render();
+}
+
+function populateFilters() {
+  const lobs = [...new Set(rawData.map(d => d.lobKey))].filter(Boolean).sort();
+  const coords = [...new Set(rawData.map(d => d.coord))].filter(Boolean).sort();
+  const lobSel = document.getElementById('fLob');
+  lobSel.innerHTML = '<option value="">All LOBs</option>' + lobs.map(l => `<option value="${l}">${getLobName(l)}</option>`).join('');
+  const cSel = document.getElementById('fCoord');
+  cSel.innerHTML = '<option value="">All coordinators</option>' + coords.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function getLobName(key) {
+  return {'NP':'Network Prog','NC':'Network Copy','NL':'Network Logs','RC':'Radio Copy','RL':'Radio Logs','LP':'Local Prog','TC':'TV Copy','TL':'TV Logs'}[key] || key;
+}
+
+function getFiltered() {
+  const lob = document.getElementById('fLob').value;
+  const lvl = document.getElementById('fLevel').value;
+  const fin = document.getElementById('fFin').value;
+  const coord = document.getElementById('fCoord').value;
+  const mo = document.getElementById('fMonth').value;
+  const q = document.getElementById('fSearch').value.toLowerCase();
+  return rawData.filter(d =>
+    (!lob || d.lobKey === lob) &&
+    (!lvl || d.qaLevel == lvl) &&
+    (!fin || (fin === 'yes' ? d.finImpact : !d.finImpact)) &&
+    (!coord || d.coord === coord) &&
+    (!mo || (d.dt && d.dt.getMonth() == mo)) &&
+    (!q || d.coord.toLowerCase().includes(q) || d.errType.toLowerCase().includes(q) || d.errDesc.toLowerCase().includes(q) || d.orderNum.toLowerCase().includes(q))
+  );
+}
+
+function render() {
+  const data = getFiltered();
+  lastData = data;
+  const N = data.length || 1;
+
+  const withErrors = data.filter(d => d.hasError);
+  const withFin = data.filter(d => d.finImpact);
+  const lvl3 = data.filter(d => d.qaLevel === 3);
+  const clean = data.filter(d => !d.hasError);
+  const checklistPass = data.filter(d => d.checklist);
+  const lobs = new Set(data.map(d => d.lobKey));
+  const coords = new Set(data.map(d => d.coord));
+  const months = data.filter(d=>d.dt).map(d=>d.dt.getMonth());
+  const years = data.filter(d=>d.dt).map(d=>d.dt.getFullYear());
+
+  const periodStr = () => {
+    const dates = data.filter(d=>d.dt).map(d=>d.dt);
+    if (!dates.length) return '—';
+    const mn = new Date(Math.min(...dates)), mx = new Date(Math.max(...dates));
+    const same = mn.getMonth()===mx.getMonth()&&mn.getFullYear()===mx.getFullYear();
+    return MONTHS[mn.getMonth()]+' '+mn.getFullYear()+(same?'':' – '+MONTHS[mx.getMonth()]+' '+mx.getFullYear());
+  };
+
+  sh('kTotal', data.length.toLocaleString());
+  sh('kErrors', (withErrors.length/N*100).toFixed(1)+'<span>%</span>');
+  sh('kErrorsN', withErrors.length+' audits with errors');
+  sh('kFin', (withFin.length/N*100).toFixed(1)+'<span>%</span>');
+  sh('kFinN', withFin.length+' impacted audits');
+  sh('kL3', lvl3.length.toLocaleString());
+  sh('kClean', (clean.length/N*100).toFixed(1)+'<span>%</span>');
+  sh('kCleanN', clean.length+' clean audits');
+  sh('kLobs', lobs.size.toString());
+  sh('kCoords', coords.size.toString());
+  sh('kChecklist', (checklistPass.length/N*100).toFixed(1)+'<span>%</span>');
+  sh('kPeriod', periodStr());
+
+  renderLobChart(data);
+  renderLevelChart(data);
+  renderTimeChart(data);
+  renderFinChart(data);
+  renderErrTypeChart(data);
+  renderCoordErrChart(data);
+  renderLobBreakdown(data);
+  renderErrorCloud(data);
+  renderCoords(data);
+  renderAuditLog(data);
+}
+
+function sh(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
+function dc(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderLobChart(data) {
+  dc('cLob');
+  const lobCounts = {}, lobErrors = {};
+  data.forEach(d => {
+    lobCounts[d.lobKey] = (lobCounts[d.lobKey]||0)+1;
+    if (d.hasError) lobErrors[d.lobKey] = (lobErrors[d.lobKey]||0)+1;
+  });
+  const labels = Object.keys(lobCounts).map(getLobName);
+  const errRates = Object.keys(lobCounts).map(k => +((lobErrors[k]||0)/lobCounts[k]*100).toFixed(1));
+  const totals = Object.values(lobCounts);
+  document.getElementById('bLob').textContent = Object.keys(lobCounts).length+' LOBs';
+  charts['cLob'] = new Chart(document.getElementById('cLob'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'Error rate %', data:errRates, backgroundColor:'rgba(244,63,94,.65)', borderColor:'#f43f5e', borderWidth:1, yAxisID:'y' },
+      { label:'Total audits', data:totals, backgroundColor:'rgba(59,130,246,.25)', borderColor:'#3b82f6', borderWidth:1, yAxisID:'y2', type:'bar' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#5a6a8a',font:{size:10},boxWidth:8} } }, scales:{
+      x:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
+      y:{ticks:{color:'#5a6a8a',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.03)'},position:'left'},
+      y2:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{display:false},position:'right'}
+    }}
+  });
+}
+
+function renderLevelChart(data) {
+  dc('cLevel');
+  const c = {1:0,2:0,3:0};
+  data.forEach(d => { if(d.qaLevel) c[d.qaLevel]=(c[d.qaLevel]||0)+1; });
+  document.getElementById('bLevel').textContent = data.length+' audits';
+  charts['cLevel'] = new Chart(document.getElementById('cLevel'), {
+    type:'doughnut',
+    data:{ labels:['Level 1','Level 2','Level 3'], datasets:[{ data:[c[1],c[2],c[3]], backgroundColor:['#22d3a5','#f59e0b','#f43f5e'], borderColor:'#0d1220', borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{color:'#5a6a8a',font:{size:11},boxWidth:10,padding:10} } } }
+  });
+}
+
+function renderTimeChart(data) {
+  dc('cTime');
+  const byMonth = {}, errByMonth = {};
+  data.filter(d=>d.dt).forEach(d => {
+    const k = d.dt.getFullYear()+'-'+String(d.dt.getMonth()+1).padStart(2,'0');
+    byMonth[k]=(byMonth[k]||0)+1;
+    if(d.hasError) errByMonth[k]=(errByMonth[k]||0)+1;
+  });
+  const keys = Object.keys(byMonth).sort();
+  document.getElementById('bTime').textContent = keys.length+' months';
+  charts['cTime'] = new Chart(document.getElementById('cTime'), {
+    type:'line',
+    data:{ labels:keys.map(k=>{ const p=k.split('-'); return MONTHS[parseInt(p[1])-1]+' '+p[0]; }),
+      datasets:[
+        { label:'Total audits', data:keys.map(k=>byMonth[k]), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.08)', tension:.4, fill:true, pointRadius:3, pointBackgroundColor:'#3b82f6' },
+        { label:'With errors', data:keys.map(k=>errByMonth[k]||0), borderColor:'#f43f5e', backgroundColor:'rgba(244,63,94,.06)', tension:.4, fill:true, pointRadius:3, pointBackgroundColor:'#f43f5e' }
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#5a6a8a',font:{size:10},boxWidth:8} } }, scales:{ x:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}}, y:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}} } }
+  });
+}
+
+function renderFinChart(data) {
+  dc('cFin');
+  const tot = {}, fin = {};
+  data.filter(d=>d.dt).forEach(d => {
+    const k = d.dt.getFullYear()+'-'+String(d.dt.getMonth()+1).padStart(2,'0');
+    tot[k]=(tot[k]||0)+1;
+    if(d.finImpact) fin[k]=(fin[k]||0)+1;
+  });
+  const keys = Object.keys(tot).sort();
+  charts['cFin'] = new Chart(document.getElementById('cFin'), {
+    type:'bar',
+    data:{ labels:keys.map(k=>{ const p=k.split('-'); return MONTHS[parseInt(p[1])-1]; }),
+      datasets:[
+        { label:'No impact', data:keys.map(k=>(tot[k]||0)-(fin[k]||0)), backgroundColor:'rgba(59,130,246,.3)', borderColor:'#3b82f6', borderWidth:1 },
+        { label:'Financial impact', data:keys.map(k=>fin[k]||0), backgroundColor:'rgba(244,63,94,.65)', borderColor:'#f43f5e', borderWidth:1 }
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#5a6a8a',font:{size:10},boxWidth:8} } }, scales:{ x:{stacked:true,ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}}, y:{stacked:true,ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}} } }
+  });
+}
+
+function renderErrTypeChart(data) {
+  dc('cErrType');
+  const counts = {};
+  data.filter(d=>d.errType).forEach(d => counts[d.errType]=(counts[d.errType]||0)+1);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  document.getElementById('bErrType').textContent = Object.keys(counts).length+' types';
+  const h = Math.max(240, sorted.length*34+60);
+  document.getElementById('errTypeWrap').style.height = h+'px';
+  charts['cErrType'] = new Chart(document.getElementById('cErrType'), {
+    type:'bar',
+    data:{ labels:sorted.map(e=>e[0].length>30?e[0].substring(0,28)+'…':e[0]), datasets:[{ label:'Count', data:sorted.map(e=>e[1]), backgroundColor:'rgba(244,63,94,.6)', borderColor:'#f43f5e', borderWidth:1 }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}}, y:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{display:false}} } }
+  });
+}
+
+function renderCoordErrChart(data) {
+  dc('cCoordErr');
+  const counts = {}, fin = {};
+  data.forEach(d => {
+    if(!d.hasError) return;
+    counts[d.coord]=(counts[d.coord]||0)+1;
+    if(d.finImpact) fin[d.coord]=(fin[d.coord]||0)+1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  document.getElementById('bCoordErr').textContent = sorted.length+' coordinators';
+  const h = Math.max(240, sorted.length*34+60);
+  document.getElementById('coordErrWrap').style.height = h+'px';
+  charts['cCoordErr'] = new Chart(document.getElementById('cCoordErr'), {
+    type:'bar',
+    data:{ labels:sorted.map(e=>e[0].split(' ').slice(0,2).join(' ')), datasets:[
+      { label:'Total errors', data:sorted.map(e=>e[1]), backgroundColor:'rgba(129,140,248,.6)', borderColor:'#818cf8', borderWidth:1 },
+      { label:'Financial', data:sorted.map(e=>fin[e[0]]||0), backgroundColor:'rgba(244,63,94,.6)', borderColor:'#f43f5e', borderWidth:1 }
+    ]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#5a6a8a',font:{size:10},boxWidth:8} } }, scales:{ x:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}}, y:{ticks:{color:'#5a6a8a',font:{size:10}},grid:{display:false}} } }
+  });
+}
+
+function renderLobBreakdown(data) {
+  const lobCounts = {}, lobErrors = {}, lobFin = {};
+  data.forEach(d => {
+    lobCounts[d.lobKey]=(lobCounts[d.lobKey]||0)+1;
+    if(d.hasError) lobErrors[d.lobKey]=(lobErrors[d.lobKey]||0)+1;
+    if(d.finImpact) lobFin[d.lobKey]=(lobFin[d.lobKey]||0)+1;
+  });
+  const total = data.length||1;
+  const sorted = Object.entries(lobCounts).sort((a,b)=>b[1]-a[1]);
+  const LOB_COLORS = {'NP':'#3b82f6','NC':'#818cf8','NL':'#2dd4bf','RC':'#e879f9','RL':'#f59e0b','LP':'#22d3a5','TC':'#38bdf8','TL':'#f43f5e'};
+  const container = document.getElementById('lobBreakdown');
+  container.innerHTML = sorted.map(([k,cnt]) => {
+    const errPct = cnt>0?((lobErrors[k]||0)/cnt*100).toFixed(0):0;
+    const share = (cnt/total*100).toFixed(0);
+    const color = LOB_COLORS[k]||'#555';
+    return `<div class="prog-row">
+      <span class="prog-lbl"><span class="lob-badge lob-${k}" style="margin-right:5px">${getLobName(k)}</span></span>
+      <div class="prog-bar"><div class="prog-fill" style="width:${share}%;background:${color}"></div></div>
+      <span class="prog-val">${share}%</span>
+      <span style="font-size:10px;color:${parseInt(errPct)>20?'#f43f5e':'#5a6a8a'};min-width:48px;text-align:right">${errPct}% err</span>
+      <span class="prog-count">${cnt}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderErrorCloud(data) {
+  const counts = {};
+  data.filter(d=>d.errDesc).forEach(d => {
+    const key = d.errDesc.length>60?d.errDesc.substring(0,57)+'…':d.errDesc;
+    counts[key]=(counts[key]||0)+1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('bDesc').textContent = sorted.length+' unique';
+  const COLORS = ['#3b82f6','#f43f5e','#22d3a5','#f59e0b','#818cf8','#e879f9','#38bdf8','#2dd4bf'];
+  const container = document.getElementById('errorCloud');
+  if (!sorted.length) { container.innerHTML='<div class="empty"><i class="ti ti-mood-happy"></i><p>No errors recorded</p></div>'; return; }
+  container.innerHTML = sorted.map(([txt,cnt],i) => {
+    const size = 10 + Math.round((cnt/max)*6);
+    const color = COLORS[i%COLORS.length];
+    return `<span style="display:inline-block;background:${color}18;color:${color};border:1px solid ${color}30;padding:3px 9px;border-radius:20px;font-size:${size}px;margin:3px 4px 3px 0;cursor:default" title="${cnt} occurrences">${txt} <span style="font-family:'JetBrains Mono',monospace;font-size:9px;opacity:.7">${cnt}</span></span>`;
+  }).join('');
+}
+
+function getInitials(name) {
+  return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+}
+
+function renderCoords(data) {
+  lastData = data;
+  const grid = document.getElementById('coordGrid');
+  const byCoord = {};
+  data.forEach(d => {
+    const n = d.coord||'Unknown';
+    if (!byCoord[n]) byCoord[n] = {name:n, lobs:new Set(), records:[]};
+    byCoord[n].records.push(d);
+    byCoord[n].lobs.add(d.lobKey);
+  });
+  const list = Object.values(byCoord).map((c,i) => {
+    const errors = c.records.filter(r=>r.hasError);
+    const fin = c.records.filter(r=>r.finImpact);
+    const l3 = c.records.filter(r=>r.qaLevel===3);
+    const errRate = c.records.length>0?(errors.length/c.records.length*100).toFixed(0):0;
+    return {...c, errors, fin, l3, errRate, colorIdx:i%AV_COLORS.length};
+  });
+
+  if (cSort==='errors') list.sort((a,b)=>b.errors.length-a.errors.length);
+  else if (cSort==='fin') list.sort((a,b)=>b.fin.length-a.fin.length);
+  else list.sort((a,b)=>a.name.localeCompare(b.name));
+
+  const withErrors = list.filter(c=>c.errors.length>0);
+  document.getElementById('bCoordDetail').textContent = withErrors.length+' coordinators with errors';
+
+  if (!withErrors.length) {
+    grid.innerHTML='<div class="empty" style="padding:28px;grid-column:1/-1"><i class="ti ti-circle-check" style="color:var(--green)"></i><p>No coordinators with errors for current filters.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = withErrors.map((c,idx) => {
+    const color = AV_COLORS[c.colorIdx];
+    const initials = getInitials(c.name);
+
+    const errRows = c.errors.map(r => {
+      const lvlClass = r.qaLevel===3?'qa-3':r.qaLevel===2?'qa-2':'qa-1';
+      const lvlTxt = r.qaLevel?'L'+r.qaLevel:'—';
+      const dateStr = r.dt ? r.dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '—';
+      const errTxt = r.errDesc.length>45?r.errDesc.substring(0,43)+'…':r.errDesc||r.errType||'—';
+      return `<tr>
+        <td style="color:var(--muted);white-space:nowrap">${dateStr}</td>
+        <td><span class="lob-badge lob-${r.lobKey}">${getLobName(r.lobKey)}</span></td>
+        <td style="color:var(--muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.task}">${r.task}</td>
+        <td><span class="qa-badge ${lvlClass}">${lvlTxt}</span></td>
+        <td>${r.finImpact?'<span class="fin-yes"><i class="ti ti-alert-circle" style="font-size:10px"></i>Yes</span>':'<span class="fin-no">No</span>'}</td>
+        <td style="color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.errDesc}">${errTxt}</td>
+      </tr>`;
+    }).join('');
+
+    const lobList = [...c.lobs].map(l=>`<span class="lob-badge lob-${l}" style="font-size:9px;margin:1px 2px">${l}</span>`).join('');
+
+    return `<div class="coord-card" id="cc-${idx}">
+      <div class="coord-hdr" onclick="tcc(${idx})">
+        <div class="coord-av" style="background:${color}20;color:${color}">${initials}</div>
+        <div class="coord-info">
+          <div class="coord-name">${c.name}</div>
+          <div class="coord-sub">${c.records.length} audits · ${[...c.lobs].map(getLobName).join(', ')}</div>
+        </div>
+        <div class="coord-pills">
+          <span class="cpill err"><i class="ti ti-alert-triangle" style="font-size:10px"></i>${c.errors.length}</span>
+          ${c.fin.length>0?`<span class="cpill fin"><i class="ti ti-currency-dollar" style="font-size:10px"></i>${c.fin.length}</span>`:'<span class="cpill ok"><i class="ti ti-check" style="font-size:10px"></i>0$</span>'}
+        </div>
+        <i class="ti ti-chevron-down chevron"></i>
+      </div>
+      <div class="coord-body">
+        <div class="coord-stats">
+          <div class="cstat"><div class="cstat-val" style="color:var(--red)">${c.errors.length}</div><div class="cstat-lbl">Errors</div></div>
+          <div class="cstat"><div class="cstat-val" style="color:var(--amber)">${c.fin.length}</div><div class="cstat-lbl">Fin. Impact</div></div>
+          <div class="cstat"><div class="cstat-val" style="color:var(--red)">${c.l3.length}</div><div class="cstat-lbl">Level 3</div></div>
+        </div>
+        <div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)">LOBs: ${lobList}</div>
+        <table class="err-table">
+          <thead><tr><th>Date</th><th>LOB</th><th>Task</th><th>Level</th><th>Financial</th><th>Error found</th></tr></thead>
+          <tbody>${errRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function tcc(idx) {
+  const card = document.getElementById('cc-'+idx);
+  if (card) card.classList.toggle('open');
+}
+
+function toggleAllCoords() {
+  allExpanded = !allExpanded;
+  document.querySelectorAll('.coord-card').forEach(c => {
+    if (allExpanded) c.classList.add('open'); else c.classList.remove('open');
+  });
+  const btn = document.getElementById('btnExpandAll');
+  if (btn) btn.innerHTML = allExpanded
+    ? '<i class="ti ti-chevrons-up" style="font-size:12px"></i>Collapse all'
+    : '<i class="ti ti-chevrons-down" style="font-size:12px"></i>Expand all';
+}
+
+function renderAuditLog(data) {
+  document.getElementById('bLog').textContent = data.length+' entries';
+  const tbody = document.getElementById('auditLog');
+  const sorted = data.slice().sort((a,b) => (b.dt||0)-(a.dt||0)).slice(0,100);
+  if (!sorted.length) { tbody.innerHTML='<tr><td colspan="9" class="empty" style="padding:24px;text-align:center"><i class="ti ti-database" style="font-size:24px;display:block;margin-bottom:8px"></i>No data</td></tr>'; return; }
+  const lvlCls = l => l===3?'qa-3':l===2?'qa-2':'qa-1';
+  tbody.innerHTML = sorted.map(r => {
+    const dateStr = r.dt ? r.dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}) : '—';
+    const errTxt = (r.errDesc||r.errType||'—').substring(0,50);
+    return `<tr>
+      <td style="color:var(--muted);white-space:nowrap">${dateStr}</td>
+      <td style="font-weight:500;color:var(--text)">${r.coord}</td>
+      <td><span class="lob-badge lob-${r.lobKey}">${getLobName(r.lobKey)}</span></td>
+      <td style="color:var(--muted)">${r.task}</td>
+      <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px">${r.orderNum||'—'}</td>
+      <td>${r.qaLevel?'<span class="qa-badge '+lvlCls(r.qaLevel)+'">L'+r.qaLevel+'</span>':'—'}</td>
+      <td style="color:var(--muted)">${r.errType||'—'}</td>
+      <td>${r.finImpact?'<span class="fin-yes"><i class="ti ti-alert-circle" style="font-size:10px"></i>Yes</span>':'<span class="fin-no">No</span>'}</td>
+      <td style="color:var(--muted)" title="${r.errDesc}">${errTxt}</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
